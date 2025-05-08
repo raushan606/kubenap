@@ -3,14 +3,12 @@ package controller
 import (
 	"context"
 	"fmt"
+	"log"
+
 	appsv1 "k8s.io/api/apps/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"k8s.io/apimachinery/pkg/fields"
-	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/client-go/informers"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/cache"
-	"log"
 )
 
 type DeploymentWatcher struct {
@@ -46,14 +44,25 @@ func (dw *DeploymentWatcher) Start(ctx context.Context) error {
 	<-ctx.Done()
 	return nil
 }
+
 func (dw *DeploymentWatcher) handleDeployment(obj interface{}) {
 	dep, ok := obj.(*appsv1.Deployment)
 	if !ok {
 		return
 	}
 
-	if val, ok := dep.Labels["kubenap/enabled"]; ok && val == "true" {
-		log.Printf("Watched deployment: %s/%s", dep.Namespace, dep.Name)
-		// TODO: track or enqueue for suspend handling
+	if val, ok := dep.Labels["kubenap/enabled"]; !ok || val != "true" {
+		return
 	}
+
+	cfg, err := ParseAnnotations(dep)
+	if err != nil {
+		log.Printf("⚠️ Failed to parse annotations for %s/%s: %v", dep.Namespace, dep.Name, err)
+		return
+	}
+
+	log.Printf("📦 Watching deployment: %s/%s | IdleAfter=%s | Replicas=%d",
+		dep.Namespace, dep.Name, cfg.IdleAfter, cfg.ReplicaCount)
+
+	// TODO: track cfg in memory or trigger autosuspend logic
 }
