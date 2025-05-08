@@ -18,13 +18,13 @@ demand when a user accesses them.
 
 ### Normal Request flow
 
-```mermaid
+```
 Ingress (Traefik, NGINX, etc.)
    └───► App Service ───► App Deployment
-   ```
+```
 ### When App is suspended
 
-```mermaid
+```
 Ingress
   └───► App Service → (points to KubeNap)
                     └───► /wake
